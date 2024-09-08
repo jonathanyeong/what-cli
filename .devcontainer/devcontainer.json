@@ -1,7 +1,7 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/ruby
 {
-  "name": "what_cli",
+  "name": "what-cli",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "build": {
     "dockerfile": "Dockerfile"
@@ -13,6 +13,5 @@
       "configureZshAsDefaultShell": true
     }
   },
-  "postCreateCommand": "cp ~/.zshrc /workspaces/${localWorkspaceFolderBasename}/.zshrc",
   "postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}"
 }
