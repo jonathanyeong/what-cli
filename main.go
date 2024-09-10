@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
@@ -21,10 +22,71 @@ type Project struct {
 	Name  string
 	Tasks []Task
 }
+
+type errMsg error
 type Model struct {
 	Projects []Project
 	cursor   int
 	selected map[int]struct{}
+}
+
+type ModelTask struct {
+	textarea textarea.Model
+	err      error
+}
+
+func initialTaskModel() ModelTask {
+	ti := textarea.New()
+	ti.Placeholder = "Add your task here..."
+	ti.Focus()
+
+	return ModelTask{
+		textarea: ti,
+		err:      nil,
+	}
+}
+
+func (m ModelTask) Init() tea.Cmd {
+	return textarea.Blink
+}
+
+func (m ModelTask) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyEsc:
+			if m.textarea.Focused() {
+				m.textarea.Blur()
+			}
+		case tea.KeyCtrlC:
+			return m, tea.Quit
+		default:
+			if !m.textarea.Focused() {
+				cmd = m.textarea.Focus()
+				cmds = append(cmds, cmd)
+			}
+		}
+
+	// We handle errors just like any other message
+	case errMsg:
+		m.err = msg
+		return m, nil
+	}
+
+	m.textarea, cmd = m.textarea.Update(msg)
+	cmds = append(cmds, cmd)
+	return m, tea.Batch(cmds...)
+}
+
+func (m ModelTask) View() string {
+	return fmt.Sprintf(
+		"What do you need to do next?\n\n%s\n\n%s",
+		m.textarea.View(),
+		"(ctrl+c to quit)",
+	) + "\n\n"
 }
 
 func initialModel() Model {
@@ -95,7 +157,11 @@ var nextCmd = &cobra.Command{
 	Use:   "next",
 	Short: "Add a new task",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Adding a new task...")
+		p := tea.NewProgram(initialTaskModel())
+		if _, err := p.Run(); err != nil {
+			fmt.Printf("Error: %v", err)
+			os.Exit(1)
+		}
 	},
 }
 
