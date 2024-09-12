@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 
 	"github.com/charmbracelet/bubbles/textarea"
@@ -178,6 +179,23 @@ var nowCmd = &cobra.Command{
 }
 
 func main() {
+	// Check for config
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Printf("Please set a home directory")
+		os.Exit(1)
+	}
+	_, err = os.Stat(homeDir + "/.what")
+	fmt.Println(homeDir)
+	if err != nil {
+		fmt.Println("Setting up what at ", homeDir)
+		err = os.Mkdir(homeDir+"/.what", fs.ModeDir)
+		if err != nil {
+			fmt.Printf("Error: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	rootCmd.AddCommand(nextCmd)
 	rootCmd.AddCommand(nowCmd)
 	if err := rootCmd.Execute(); err != nil {
