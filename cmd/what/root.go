@@ -12,7 +12,7 @@ func initRootCmd() (*cobra.Command, error) {
 
 	cmd.AddCommand(
 		initNextCmd(),
-		nowCmd,
+		initNowCmd(),
 	)
 	return cmd, nil
 }

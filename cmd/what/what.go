@@ -1,16 +1,13 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"io/fs"
 	"os"
 
 	"github.com/charmbracelet/bubbles/textarea"
-	tea "github.com/charmbracelet/bubbletea"
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"
-	"github.com/spf13/cobra"
 )
 
 // What next - Offer a UI for me to type out what I should be doing next. Stretch goal would be to add the task to a specific project. Find a way to create a project. It could default to the project you're in?
@@ -44,157 +41,6 @@ type Model struct {
 type ModelTask struct {
 	textarea textarea.Model
 	err      error
-}
-
-func initialTaskModel() ModelTask {
-	ti := textarea.New()
-	ti.Placeholder = "Add your task here..."
-	ti.Focus()
-
-	return ModelTask{
-		textarea: ti,
-		err:      nil,
-	}
-}
-
-func (m ModelTask) Init() tea.Cmd {
-	return textarea.Blink
-}
-
-func (m ModelTask) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd
-	var cmd tea.Cmd
-
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEsc:
-			if m.textarea.Focused() {
-				m.textarea.Blur()
-			}
-		case tea.KeyCtrlC:
-			return m, tea.Quit
-		default:
-			if !m.textarea.Focused() {
-				cmd = m.textarea.Focus()
-				cmds = append(cmds, cmd)
-			}
-		}
-
-	// We handle errors just like any other message
-	case errMsg:
-		m.err = msg
-		return m, nil
-	}
-
-	m.textarea, cmd = m.textarea.Update(msg)
-	cmds = append(cmds, cmd)
-	return m, tea.Batch(cmds...)
-}
-
-func (m ModelTask) View() string {
-	return fmt.Sprintf(
-		"What do you need to do next?\n\n%s\n\n%s",
-		m.textarea.View(),
-		"(ctrl+c to quit)",
-	) + "\n\n"
-}
-
-func initialModel(tasks []TaskModel) Model {
-	var taskTransform []Task
-
-	for _, task := range tasks {
-		taskTransform = append(taskTransform, Task{Description: task.TaskDescription, Done: task.IsComplete})
-	}
-	fmt.Printf("Tasks found: %v\n", tasks)
-	fmt.Printf("taskTransform found: %v\n", taskTransform)
-
-	return Model{
-		Projects: []Project{
-			{Name: "Default", Tasks: taskTransform},
-		},
-		selected: make(map[int]struct{}),
-	}
-}
-
-func (m Model) Init() tea.Cmd {
-	return nil
-}
-
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-		case "down", "j":
-			if m.cursor < len(m.Projects[0].Tasks)-1 {
-				m.cursor++
-			}
-		case "enter", " ":
-			_, ok := m.selected[m.cursor]
-			if ok {
-				delete(m.selected, m.cursor)
-			} else {
-				m.selected[m.cursor] = struct{}{}
-			}
-		}
-	}
-	return m, nil
-}
-
-func (m Model) View() string {
-	s := "What Now?\n\n"
-	for i, task := range m.Projects[0].Tasks {
-		cursor := " "
-		if m.cursor == i {
-			cursor = ">"
-		}
-
-		checked := " "
-		if _, ok := m.selected[i]; ok {
-			checked = "x"
-		}
-
-		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, task.Description)
-	}
-	s += "\nPress q to quit.\n"
-	return s
-}
-
-var nowCmd = &cobra.Command{
-	Use:   "now",
-	Short: "View and manage current tasks",
-	Run: func(cmd *cobra.Command, args []string) {
-		var tasks []TaskModel
-		homeDir, _ := os.UserHomeDir()
-		db, _ := sql.Open("sqlite3", homeDir+"/.what/what.db")
-		defer db.Close()
-		rows, err := db.Query("SELECT * FROM tasks")
-		if err != nil {
-			fmt.Printf("Error: %v", err)
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var task TaskModel
-			if err := rows.Scan(&task.ID, &task.TaskDescription, &task.IsComplete, &task.Project); err != nil {
-				fmt.Printf("Error: %v", err)
-			}
-			tasks = append(tasks, task)
-		}
-
-		p := tea.NewProgram(initialModel(tasks))
-		if _, err := p.Run(); err != nil {
-			fmt.Printf("Error: %v", err)
-			os.Exit(1)
-		}
-	},
 }
 
 func main() {
