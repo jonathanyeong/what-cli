@@ -11,7 +11,7 @@ func initRootCmd() (*cobra.Command, error) {
 	}
 
 	cmd.AddCommand(
-		nextCmd,
+		initNextCmd(),
 		nowCmd,
 	)
 	return cmd, nil
