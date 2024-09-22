@@ -168,11 +168,6 @@ func (m Model) View() string {
 	return s
 }
 
-var rootCmd = &cobra.Command{
-	Use:   "what",
-	Short: "A task manager inside your CLI!",
-}
-
 var nextCmd = &cobra.Command{
 	Use:   "next",
 	Short: "Add a new task",
@@ -249,9 +244,13 @@ func main() {
 		}
 		os.Create(homeDir + "/.what/what.db")
 	}
-	rootCmd.AddCommand(nextCmd)
-	rootCmd.AddCommand(nowCmd)
-	if err := rootCmd.Execute(); err != nil {
+	cmd, err := initRootCmd()
+	if err != nil {
+		// TODO: Add Logging
+		os.Exit(1)
+	}
+
+	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
